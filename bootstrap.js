@@ -2,7 +2,6 @@ const Cc = Components.classes;
 const Ci = Components.interfaces;
 const Cu = Components.utils;
 Cu.import('resource://gre/modules/Services.jsm');
-Cu.import('resource://gre/modules/PrivateBrowsingUtils.jsm');
 
 //const DEBUG = false; // If false, the debug() function does nothing.
 const DEBUG = true; // If false, the debug() function does nothing.
@@ -15,8 +14,10 @@ gSearchWP.Preferences.highlightMatchCase = false;
 gSearchWP.Preferences.highlighterCount = 5;
 gSearchWP.Preferences.overlapsDisplayMode = 1;
 gSearchWP.Preferences.maxColorizedHighlights  = 10000;
+gSearchWP.SyncRegex = new RegExp("^http[s]?://([^.]+\.)?google\.([a-z]+\.?)+/.*[?&]q=([^&]*)");
 
-gSyncRegex = new RegExp("^http[s]?://([^.]+\.)?google\.([a-z]+\.?)+/.*[?&]q=([^&]*)", "g");
+Cu.import('chrome://testapp/content/nodeSearcher.js');
+Cu.import('chrome://testapp/content/nodeHighlighter.js');
 
 gSearchWP.loadStyleSheet = function(aFileURI, aIsAgentSheet) {
   var sss = Components.classes["@mozilla.org/content/style-sheet-service;1"]
@@ -30,205 +31,6 @@ gSearchWP.loadStyleSheet = function(aFileURI, aIsAgentSheet) {
   }
 }
 
-gSearchWP.Highlighter.NodeSearcher = function NodeSearcher() {
-
-  this.search = function( topElement, word, caseSensitive, excludeEditable ) {
-
-    var ret = [], textNodes;
-
-    // Workaround for bug https://bugzilla.mozilla.org/show_bug.cgi?id=488427
-    // (forcing a FlushPendingNotifications call)
-    topElement.offsetWidth;
-
-    var searchRange = topElement.ownerDocument.createRange();
-    //var searchRange = topElement.createRange();
-    searchRange.selectNodeContents( topElement );
-
-    var startPt = searchRange.cloneRange();
-    startPt.collapse( true );
-
-    var endPt = searchRange.cloneRange();
-    endPt.collapse( false );
-
-    var finder = Components.classes['@mozilla.org/embedcomp/rangefind;1']
-      .createInstance( Components.interfaces.nsIFind );
-
-    finder.caseSensitive = !!caseSensitive;
-
-    while (( startPt = finder.Find(word, searchRange, startPt, endPt) )) {
-      textNodes = getTextNodesFromFindRange( startPt );
-
-      if ( excludeEditable && textNodes.some( isEditable ) ) {
-        // Skip the first node.
-        startPt.setStartAfter( textNodes[0] );
-
-      } else {
-        textNodes.range = startPt.cloneRange();
-        ret.push( textNodes );
-      }
-
-      startPt.collapse( false );
-    }
-
-    return ret;
-  };
-
-  function isEditable( node ) {
-    // No need to check the text node itself (only parents).
-    while (( node = node.parentNode )) {
-      if ( node instanceof Components.interfaces.nsIDOMNSEditableElement ) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  function getTextNodesFromFindRange( range ) {
-    var node = range.startContainer;
-    var last = range.endContainer;
-    var ret = [], isTextNode;
-
-    while ( 1 ) {
-      isTextNode = node.nodeType === 3;
-
-      if ( isTextNode ) {
-        ret.push( node );
-      }
-
-      if ( node === last ) {
-        break;
-      }
-
-      // Skip childs as nsFind does...
-      node = getNextNode( node, isTextNode || /^(?:script|noframe|select)$/i.test(node.nodeName) );
-      if ( !node ) {
-        throw "last node in range not reached - check nsFind.cpp to see which nodes are skipped";
-      }
-    }
-
-    return ret;
-  }
-
-  function getNextNode( node, skipChilds ) {
-    var next = !skipChilds && node.firstChild || node.nextSibling;
-    while ( !next ) {
-      node = node.parentNode;
-      if ( !node ) {
-        return null;
-      }
-      next = node.nextSibling;
-    }
-    return next;
-  }
-
-};
-
-gSearchWP.Highlighter.NodeHighlighter = function(aName) {
-  var _name = aName;
-  var _className = "searchwp-highlight-" + _name;
-
-  /**
-   * Clear the highlighting for a particular document.
-   * @param aDocument The document to clear.
-   */
-  this.clear = function(aDocument) {
-    if (!aDocument) {
-      return;
-    }
-
-    var elementList = aDocument.getElementsByClassName( _className );
-    var elements = Array.slice( elementList, 0 );
-
-    var lastParent;
-
-    elements.forEach(function( element ) {
-      var parent = element.parentNode;
-
-      while ( element.firstChild ) {
-        parent.insertBefore( element.firstChild, element );
-      }
-      parent.removeChild( element );
-
-      if ( parent !== lastParent ) {
-        lastParent && lastParent.normalize();
-        lastParent = parent;
-      }
-    });
-
-    lastParent && lastParent.normalize();
-  };
-
-  this.highlight = function( aTextNodesArray, aElementProto ) {
-    if ( aTextNodesArray.length === 0 ) {
-      return;
-    }
-
-    var document = aElementProto.ownerDocument;
-    var elementProto = aElementProto.cloneNode(false);
-    elementProto.className += " " + _className;
-
-    var prevNode, fragment, usedOffset, offset, rest, left, towrap, element;
-
-    for ( var i = 0, ii = aTextNodesArray.length; i < ii; ++i ) {
-      var textNodes = aTextNodesArray[i];
-
-      for ( var j = 0, jj = textNodes.length, n = jj-1; j < jj ; ++j ) {
-        var node = textNodes[j];
-
-        if ( node != prevNode && fragment ) {
-          rest && rest.data && fragment.appendChild( rest );
-          prevNode.parentNode.replaceChild( fragment, prevNode );
-          fragment = null;
-        }
-
-        // first or/and last
-        if ( j == 0 || j == n ) {
-          if ( !fragment ) {
-            fragment = document.createDocumentFragment();
-            rest = node.cloneNode(false);
-            usedOffset = 0;
-          }
-
-          towrap = rest;
-          rest = null;
-
-          if ( j == 0 ) {
-            offset = textNodes.range.startOffset - usedOffset;
-            if ( offset ) {
-              left = towrap;
-              towrap = towrap.splitText( offset );
-              fragment.appendChild( left );
-              usedOffset += offset;
-            }
-          }
-
-          if ( j == n ) {
-            offset = textNodes.range.endOffset - usedOffset;
-            rest = towrap.splitText( offset );
-            usedOffset += offset;
-          }
-
-          element = elementProto.cloneNode(false);
-          element.appendChild( towrap );
-          fragment.appendChild( element );
-        // others
-        } else {
-          element = elementProto.cloneNode(false);
-          node.parentNode.replaceChild( element, node );
-          element.appendChild( node );
-        }
-
-        prevNode = node;
-      }
-    }
-
-    if ( fragment ) {
-      rest && rest.data && fragment.appendChild( rest );
-      prevNode.parentNode.replaceChild( fragment, prevNode );
-    }
-  };
-};
-
 gSearchWP.Highlighting = new function() {
   gSearchWP.loadStyleSheet("chrome://testapp/content/highlighting-user.css");
 
@@ -236,8 +38,8 @@ gSearchWP.Highlighting = new function() {
   var _tokensArrayCache;
   var _matchCaseCache;
   var _highlightTimeout;
-  var _highlighter = new gSearchWP.Highlighter.NodeHighlighter("searchwp-highlighting");
-  var _nodeSearcher = new gSearchWP.Highlighter.NodeSearcher();
+  var _highlighter = new NodeHighlighter("searchwp-highlighting");
+  var _nodeSearcher = new NodeSearcher();
 
   /**
    * Initialize this class.
@@ -450,9 +252,9 @@ gSearchWP.Highlighting = new function() {
 }
 
 //===========================================
-// OneHandZoom
+// WordHighlighter
 //===========================================
-let OneHandZoom = {
+let WordHighlighter = {
     install: function() {
         //debug('install()');
     },
@@ -463,9 +265,6 @@ let OneHandZoom = {
 
     init: function() {
         debug('init()');
-
-        const firefoxApp = Cc['@mozilla.org/xre/app-info;1'].getService(Ci.nsIXULAppInfo);
-        this._firefoxVersion = parseInt(firefoxApp.version);
 
         this._branch = null;
 
@@ -495,8 +294,8 @@ let OneHandZoom = {
             return;
 
         let deck = aWindow.BrowserApp.deck;
-        deck.addEventListener("touchstart", this, true);
         deck.addEventListener("pageshow", this, false);
+        deck.addEventListener("touch", this, false);
         Services.obs.addObserver(this, "Tab:Selected", false);
     },
 
@@ -507,8 +306,8 @@ let OneHandZoom = {
             return;
 
         let deck = aWindow.BrowserApp.deck;
-        deck.removeEventListener('touchstart', this, true);
         deck.removeEventListener("pageshow", this, false);
+        deck.removeEventListener("touch", this, false);
         Services.obs.removeObserver(this, "Tab:Selected", false);
     },
 
@@ -524,29 +323,80 @@ let OneHandZoom = {
         }
     },
 
+    _test: function(uri) {
+        //var str = "https://www.google.co.jp/search?q=searchwp&rls=org.mozilla%3Aja%3Aofficial&oq=searchwp&gs_l=mobile-heirloom-serp.3..0l5.491163.502108.0.503551.24.10.6.4.7.2.772.2771.2j3j1j5-1j2.9.0....0...1c.1.34.mobile-heirloom-serp..9.15.932.P3NnWCdF6NU";
+        //var str = "https://www.google.co.jp/search?q=searchwp+reboot&oe=utf-8&rls=org.mozilla%3Aja%3Aofficial&gws_rd=cr&oq=searchwp+reboot&gs_l=mobile-heirloom-serp.3..41.4495.15530.0.16229.19.13.5.0.0.2.524.2509.2j5j5j5-1.13.0....0...1c.1.34.mobile-heirloom-serp..11.8.797.ZsbhrEDVstM"
+        var str = uri;
+        var re0 = new RegExp("^http[s]?://([^.]+\.)?google\.([a-z]+\.?)+/(.*)");
+        debug("=================== start");
+        var match = re0.exec(str);
+        debug("=================== end");
+    },
+
     _updateHighlightWords: function(uri) {
+        //this._test();
         debug("uri: " + uri);
-        var match = gSyncRegex.exec(uri);
+        var index = uri.indexOf("://");
+        if(index < 0) {
+            return;
+        }
+        var str = uri.substr(index+3);
+        debug("str: " + str);
+        index = str.indexOf("/");
+        if(index < 0) {
+            return;
+        }
+        var addr = str.substr(0, index);
+        debug("addr: " + addr);
+        var re0 = new RegExp("^([^.]+\.)?google\.([a-z]+\.?)+");
+        var match = re0.exec(addr);
+        if(!match) {
+            return;
+        }
+        var path = str.substr(index+1);
+        var re1 = new RegExp("^.*[?&]q=([^&]*)");
+        debug("path: " + path);
+        debug("regexp: done");
+        match = re1.exec(path);
+        //var match = gSearchWP.SyncRegex.exec(uri);
         if(match) {
-            var matchStr = match[match.length-1];
-            var words = [];
-            if(matchStr.indexOf("+") >= 0) {
-                words = match[match.length-1].split("+");
+            debug("regexp: done: ");
+            //this._test(uri);
+            if(match) {
+                var matchStr = match[match.length-1];
+                matchStr = matchStr.replace("　", "+");
+                matchStr = matchStr.replace("%81%40", "+");
+                matchStr = matchStr.replace("%E3%80%80", "+");
+                debug("matchStr: " + matchStr);
+                var words = [];
+                if(matchStr.indexOf("+") >= 0) {
+                    var tmp = matchStr.split("+");
+                    for(var i = 0, len = tmp.length; i < len; ++i) {
+                        if(tmp[i] != "") {
+                            words.push(tmp[i]);
+                        }
+                    }
+                }
+                else {
+                    words = [matchStr];
+                }
+                for(var i = 0, len = words.length; i < len; ++i) {
+                    words[i] = decodeURI(words[i]);
+                    debug("Words: " + words[i]);
+                }
+                getChromeWindow()._extensionHilighterWords = words;
             }
-            else {
-                words = [matchStr];
-            }
-            for(var i = 0, len = words.length; i < len; ++i) {
-                words[i] = decodeURI(words[i]);
-                debug("Words: " + words[i]);
-            }
-            getChromeWindow()._extensionHilighterWords = words;
         }
     },
 
     handleEvent: function(aEvent) {
         debug("handleEvent: " + aEvent.type);
         switch (aEvent.type) {
+            case 'touch':
+            {
+                this._test();
+                break;
+            }
             case 'pageshow':
             {
                 if (aEvent.originalTarget.defaultView != getSelectedTab().browser.contentWindow) {
@@ -558,11 +408,6 @@ let OneHandZoom = {
                 break;
             }
         }
-
-        switch (aEvent.type) {
-            case 'touchstart':
-                break;
-        }
     },
 };
 
@@ -570,24 +415,24 @@ let OneHandZoom = {
 // bootstrap.js API
 //===========================================
 function install(aData, aReason) {
-    //OneHandZoom.install();
+    //WordHighlighter.install();
 }
 
 function uninstall(aData, aReason) {
     //if (aReason == ADDON_UNINSTALL)
-        //OneHandZoom.uninstall();
+        //WordHighlighter.uninstall();
 }
 
 function startup(aData, aReason) {
     // General setup
-    OneHandZoom.init();
+    WordHighlighter.init();
 
     // Load into any existing windows
     let windows = Services.wm.getEnumerator('navigator:browser');
     while (windows.hasMoreElements()) {
         let win = windows.getNext().QueryInterface(Ci.nsIDOMWindow);
         if (win)
-            OneHandZoom.load(win);
+            WordHighlighter.load(win);
     }
 
     // Load into any new windows
@@ -608,11 +453,11 @@ function shutdown(aData, aReason) {
     while (windows.hasMoreElements()) {
         let win = windows.getNext().QueryInterface(Ci.nsIDOMWindow);
         if (win)
-            OneHandZoom.unload(win);
+            WordHighlighter.unload(win);
     }
 
     // General teardown
-    OneHandZoom.uninit();
+    WordHighlighter.uninit();
 }
 
 let windowListener = {
@@ -623,7 +468,7 @@ let windowListener = {
 
         win.addEventListener('UIReady', function() {
             win.removeEventListener('UIReady', arguments.callee, false);
-            OneHandZoom.load(win);
+            WordHighlighter.load(win);
         }, false);
     },
 
@@ -638,7 +483,7 @@ let windowListener = {
 //===========================================
 function debug(aMsg) {
     if (!DEBUG) return;
-    aMsg = 'OneHandZoom: ' + aMsg;
+    aMsg = 'WordHighlighter: ' + aMsg;
     Services.console.logStringMessage(aMsg);
 }
 
@@ -691,7 +536,7 @@ let gStringBundle = null;
 function tr(aName) {
     // For translation
     if (!gStringBundle) {
-        let uri = 'chrome://onehandzoom/locale/main.properties';
+        let uri = 'chrome://testapp/locale/main.properties';
         gStringBundle = Services.strings.createBundle(uri);
     }
 
