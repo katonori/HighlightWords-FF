@@ -34,59 +34,19 @@ gSearchWP.loadStyleSheet = function(aFileURI, aIsAgentSheet) {
 gSearchWP.Highlighting = new function() {
   gSearchWP.loadStyleSheet("chrome://testapp/content/highlighting-user.css");
 
-  var _stringBundle = null;
-  var _tokensArrayCache;
-  var _matchCaseCache;
-  var _highlightTimeout;
   var _highlighter = new NodeHighlighter("searchwp-highlighting");
   var _nodeSearcher = new NodeSearcher();
-
-  /**
-   * Initialize this class.
-   */
-  this.init = function() {
-    _stringBundle = document.getElementById("bundle-searchwp");
-
-    var tabBox = document.getElementById("content").mTabBox;
-    tabBox.addEventListener("select", refreshCallback, false);
-  }
-
-  /**
-   * Updates the highlighting according to the terms.
-   */
-  this.update = function(aTokensArray, aForce) {
-    var highlightMatchCase = gSearchWP.Preferences.highlightMatchCase;
-
-    if ( aForce ||
-      !_tokensArrayCache != !aTokensArray ||
-      !_matchCaseCache != !highlightMatchCase ||
-      !areArraysEqual( _tokensArrayCache || [], aTokensArray || [] )
-    ) {
-      _tokensArrayCache = aTokensArray;
-      _matchCaseCache = highlightMatchCase;
-
-      setRefreshTimeout();
-    }
-  }
 
   /**
    * Refreshes the current highlighting.
    */
   this.refresh = function() {
-   clearRefreshTimeout();
-
     if (gSearchWP.Preferences.highlighted) {
       unhighlight();
       highlight();
     }
     else {
       unhighlight();
-    }
-  }
-
-  this.flushUpdate = function() {
-    if ( _highlightTimeout ) {
-      this.refresh();
     }
   }
 
@@ -105,46 +65,13 @@ gSearchWP.Highlighting = new function() {
   }
 
   /**
-   * @return true if the highlight button exists.
-   */
-  this.exist = function() {
-    return this.highlightButton != null;
-  }
-
-  /**
-   * @return a reference to the highlight button.
-   */
-  this.__defineGetter__("highlightButton", function() {
-    return document.getElementById("searchwp-highlight-button");
-  });
-
-  /**
-   * Sets a refresh for the highlighting in 500ms.
-   */
-  function setRefreshTimeout() {
-    clearRefreshTimeout();
-    _highlightTimeout = setTimeout( refreshCallback, 500 );
-  }
-
-  function clearRefreshTimeout() {
-    if ( _highlightTimeout ) {
-      clearTimeout( _highlightTimeout );
-      _highlightTimeout = 0;
-    }
-  }
-
-  function refreshCallback() {
-    gSearchWP.Highlighting.refresh();
-  }
-
-  /**
    * Hightlight the current page.
    */
   //function highlight() {
   this.highlight = function () {
     var termsArray = getChromeWindow()._extensionHilighterWords;
     for(var i = 0, len = termsArray.length; i < len; ++i) {
-        debug("WORDS: " + termsArray[i]);
+        debug("Words: " + termsArray[i]);
     }
     if ( termsArray ) {
       var count = 0;
@@ -284,9 +211,6 @@ let WordHighlighter = {
         }
     },
 
-    myOnDoubleTap: function(aData) {
-    },
-
     load: function(aWindow) {
         //debug('load(' + aWindow + ')');
 
@@ -333,25 +257,24 @@ let WordHighlighter = {
         debug("=================== end");
     },
 
-    _updateHighlightWords: function(uri) {
-        //this._test();
+    _parseUri: function(uri) {
         debug("uri: " + uri);
         var index = uri.indexOf("://");
         if(index < 0) {
-            return;
+            return null;
         }
         var str = uri.substr(index+3);
         debug("str: " + str);
         index = str.indexOf("/");
         if(index < 0) {
-            return;
+            return null;
         }
         var addr = str.substr(0, index);
         debug("addr: " + addr);
         var re0 = new RegExp("^([^.]+\.)?google\.([a-z]+\.?)+");
         var match = re0.exec(addr);
         if(!match) {
-            return;
+            return null;
         }
         var path = str.substr(index+1);
         var re1 = new RegExp("^.*[?&]q=([^&]*)");
@@ -360,6 +283,7 @@ let WordHighlighter = {
         match = re1.exec(path);
         //var match = gSearchWP.SyncRegex.exec(uri);
         if(match) {
+            var words = [];
             debug("regexp: done: ");
             //this._test(uri);
             if(match) {
@@ -368,7 +292,6 @@ let WordHighlighter = {
                 matchStr = matchStr.replace("%81%40", "+");
                 matchStr = matchStr.replace("%E3%80%80", "+");
                 debug("matchStr: " + matchStr);
-                var words = [];
                 if(matchStr.indexOf("+") >= 0) {
                     var tmp = matchStr.split("+");
                     for(var i = 0, len = tmp.length; i < len; ++i) {
@@ -382,10 +305,18 @@ let WordHighlighter = {
                 }
                 for(var i = 0, len = words.length; i < len; ++i) {
                     words[i] = decodeURI(words[i]);
-                    debug("Words: " + words[i]);
                 }
-                getChromeWindow()._extensionHilighterWords = words;
             }
+            return words;
+        }
+        return null;
+    },
+
+    _updateHighlightWords: function(uri) {
+        //this._test();
+        var words = this._parseUri(uri);
+        if(words) {
+            getChromeWindow()._extensionHilighterWords = words;
         }
     },
 

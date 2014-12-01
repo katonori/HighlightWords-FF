@@ -30,8 +30,6 @@ gSearchWP.Highlighting = new function() {
   var _highlighter = new gSearchWP.Highlighter.NodeHighlighter("searchwp-highlighting");
   var _nodeSearcher = new gSearchWP.Highlighter.NodeSearcher();
 
-  this.test = "AAAAAAAA";
-
   /**
    * Initialize this class.
    */
