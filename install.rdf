@@ -4,9 +4,9 @@
      xmlns:em="http://www.mozilla.org/2004/em-rdf#">
 
     <Description about="urn:mozilla:install-manifest">
-        <em:id>testapp@katonori.addons.mozilla.org</em:id>
+        <em:id>highlightwords@katonori.addons.mozilla.org</em:id>
         <em:type>2</em:type>
-        <em:name>testapp</em:name>
+        <em:name>highlightwords</em:name>
         <em:version>1.0.0</em:version>
         <em:bootstrap>true</em:bootstrap>
         <em:description>This add-on enables you to zoom in/out by one hand</em:description>
@@ -16,7 +16,7 @@
         <em:targetApplication>
             <Description>
                 <em:id>{aa3c5121-dab2-40e2-81ca-7ea25febc110}</em:id>
-                <em:minVersion>17.0</em:minVersion>
+                <em:minVersion>33.0</em:minVersion>
                 <em:maxVersion>34.0</em:maxVersion>
             </Description>
         </em:targetApplication>

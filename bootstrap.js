@@ -6,20 +6,20 @@ Cu.import('resource://gre/modules/Services.jsm');
 //const DEBUG = false; // If false, the debug() function does nothing.
 const DEBUG = true; // If false, the debug() function does nothing.
 
-gSearchWP = {};
-gSearchWP.Highlighter = {};
-gSearchWP.Preferences = {};
-gSearchWP.Preferences.highlighted = false;
-gSearchWP.Preferences.highlightMatchCase = false;
-gSearchWP.Preferences.highlighterCount = 5;
-gSearchWP.Preferences.overlapsDisplayMode = 1;
-gSearchWP.Preferences.maxColorizedHighlights  = 10000;
-gSearchWP.SyncRegex = new RegExp("^http[s]?://([^.]+\.)?google\.([a-z]+\.?)+/.*[?&]q=([^&]*)");
+gHighlightWords = {};
+gHighlightWords.Highlighter = {};
+gHighlightWords.Preferences = {};
+gHighlightWords.Preferences.highlighted = false;
+gHighlightWords.Preferences.highlightMatchCase = false;
+gHighlightWords.Preferences.highlighterCount = 5;
+gHighlightWords.Preferences.overlapsDisplayMode = 1;
+gHighlightWords.Preferences.maxColorizedHighlights  = 10000;
+gHighlightWords.SyncRegex = new RegExp("^http[s]?://([^.]+\.)?google\.([a-z]+\.?)+/.*[?&]q=([^&]*)");
 
-Cu.import('chrome://testapp/content/nodeSearcher.js');
-Cu.import('chrome://testapp/content/nodeHighlighter.js');
+Cu.import('chrome://highlightwords/content/nodeSearcher.js');
+Cu.import('chrome://highlightwords/content/nodeHighlighter.js');
 
-gSearchWP.loadStyleSheet = function(aFileURI, aIsAgentSheet) {
+gHighlightWords.loadStyleSheet = function(aFileURI, aIsAgentSheet) {
   var sss = Components.classes["@mozilla.org/content/style-sheet-service;1"]
                       .getService(Components.interfaces.nsIStyleSheetService);
   var ios = Components.classes["@mozilla.org/network/io-service;1"]
@@ -31,8 +31,8 @@ gSearchWP.loadStyleSheet = function(aFileURI, aIsAgentSheet) {
   }
 }
 
-gSearchWP.Highlighting = new function() {
-  gSearchWP.loadStyleSheet("chrome://testapp/content/highlighting-user.css");
+gHighlightWords.Highlighting = new function() {
+  gHighlightWords.loadStyleSheet("chrome://highlightwords/content/highlighting-user.css");
 
   var _highlighter = new NodeHighlighter("searchwp-highlighting");
   var _nodeSearcher = new NodeSearcher();
@@ -41,7 +41,7 @@ gSearchWP.Highlighting = new function() {
    * Refreshes the current highlighting.
    */
   this.refresh = function() {
-    if (gSearchWP.Preferences.highlighted) {
+    if (gHighlightWords.Preferences.highlighted) {
       unhighlight();
       highlight();
     }
@@ -58,9 +58,9 @@ gSearchWP.Highlighting = new function() {
   this.toggleHighlight = function(aEvent) {
     var matchCase = aEvent.altKey || aEvent.ctrlKey;
 
-    gSearchWP.Preferences.highlightMatchCase = matchCase;
-    if (!gSearchWP.Preferences.highlighted || !matchCase) {
-      gSearchWP.Preferences.highlighted = !gSearchWP.Preferences.highlighted;
+    gHighlightWords.Preferences.highlightMatchCase = matchCase;
+    if (!gHighlightWords.Preferences.highlighted || !matchCase) {
+      gHighlightWords.Preferences.highlighted = !gHighlightWords.Preferences.highlighted;
     }
   }
 
@@ -75,8 +75,8 @@ gSearchWP.Highlighting = new function() {
     }
     if ( termsArray ) {
       var count = 0;
-      var highlighterCount = gSearchWP.Preferences.highlighterCount;
-      var highlightMatchCase = gSearchWP.Preferences.highlightMatchCase;
+      var highlighterCount = gHighlightWords.Preferences.highlighterCount;
+      var highlightMatchCase = gHighlightWords.Preferences.highlightMatchCase;
 
       for ( var i = 0, len = termsArray.length; i < len; ++i ) {
         var criteria = "term-" + ( i % highlighterCount + 1 );
@@ -110,7 +110,7 @@ gSearchWP.Highlighting = new function() {
     }
 
     var clearing = !aCriteria || !aWord;
-    var overlapsDisplayMode = gSearchWP.Preferences.overlapsDisplayMode;
+    var overlapsDisplayMode = gHighlightWords.Preferences.overlapsDisplayMode;
 
     if ( !clearing && overlapsDisplayMode == 1 ) { // fixed
       doc.body.classList.add("searchwp-overlaps-display-mode-1");
@@ -129,7 +129,7 @@ gSearchWP.Highlighting = new function() {
     var searchResults = _nodeSearcher.search( doc.body, criteria, aMatchCase, true );
 
     if ( searchResults.length ) {
-      if ( searchResults.length > gSearchWP.Preferences.maxColorizedHighlights ) {
+      if ( searchResults.length > gHighlightWords.Preferences.maxColorizedHighlights ) {
         var findSelection = getFindSelection( aWindow );
 
         if ( findSelection ) {
@@ -160,7 +160,7 @@ gSearchWP.Highlighting = new function() {
 
   function getFindSelection( aWindow ) {
     debug("DDDDDDDDD: getFindSelection()");
-    return gSearchWP.getSelectionOfType( aWindow, 128 );
+    return gHighlightWords.getSelectionOfType( aWindow, 128 );
   }
 
   function areArraysEqual( aArray1, aArray2 ) {
@@ -196,7 +196,7 @@ let WordHighlighter = {
         this._branch = null;
 
         if (!this._branch) {
-            this._branch = Services.prefs.getBranch('extensions.testapp.');
+            this._branch = Services.prefs.getBranch('extensions.highlightwords.');
 
             this._branch.addObserver('', this, false);
         }
@@ -281,7 +281,7 @@ let WordHighlighter = {
         debug("path: " + path);
         debug("regexp: done");
         match = re1.exec(path);
-        //var match = gSearchWP.SyncRegex.exec(uri);
+        //var match = gHighlightWords.SyncRegex.exec(uri);
         if(match) {
             var words = [];
             debug("regexp: done: ");
@@ -335,7 +335,7 @@ let WordHighlighter = {
                 }
                 var uri = getCurTabUrl();
                 this._updateHighlightWords(uri);
-                gSearchWP.Highlighting.highlight();
+                gHighlightWords.Highlighting.highlight();
                 break;
             }
         }
@@ -414,7 +414,7 @@ let windowListener = {
 //===========================================
 function debug(aMsg) {
     if (!DEBUG) return;
-    aMsg = 'WordHighlighter: ' + aMsg;
+    aMsg = 'HighlightWords: ' + aMsg;
     Services.console.logStringMessage(aMsg);
 }
 
@@ -467,7 +467,7 @@ let gStringBundle = null;
 function tr(aName) {
     // For translation
     if (!gStringBundle) {
-        let uri = 'chrome://testapp/locale/main.properties';
+        let uri = 'chrome://highlightwords/locale/main.properties';
         gStringBundle = Services.strings.createBundle(uri);
     }
 
