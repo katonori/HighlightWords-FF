@@ -4,8 +4,8 @@ const Cu = Components.utils;
 Cu.import('resource://gre/modules/Services.jsm');
 
 //const DEBUG = false; // If false, the debug() function does nothing.
-const DEBUG = true; // If false, the debug() function does nothing.
-const TEST = true; // If false, the debug() function does nothing.
+const DEBUG = false; // If false, the debug() function does nothing.
+const TEST = false; // If false, the debug() function does nothing.
 
 gHighlightWords = {};
 gHighlightWords.Preferences = {};
@@ -13,7 +13,7 @@ gHighlightWords.Preferences.highlighted = false;
 gHighlightWords.Preferences.highlightMatchCase = false;
 gHighlightWords.Preferences.highlighterCount = 5;
 gHighlightWords.Preferences.overlapsDisplayMode = 1;
-gHighlightWords.Preferences.maxColorizedHighlights  = 10000;
+gHighlightWords.Preferences.maxColorizedHighlights  = 1000;
 gHighlightWords.SyncRegex = new RegExp("^http[s]?://([^.]+\.)?google\.([a-z]+\.?)+/.*[?&]q=([^&]*)");
 
 Cu.import('chrome://highlightwords/content/nodeSearcher.js');
@@ -255,16 +255,6 @@ gHighlightWords.Highlighting = new function() {
       }
   }
 
-  function _test(uri) {
-      //var str = "https://www.google.co.jp/search?q=searchwp&rls=org.mozilla%3Aja%3Aofficial&oq=searchwp&gs_l=mobile-heirloom-serp.3..0l5.491163.502108.0.503551.24.10.6.4.7.2.772.2771.2j3j1j5-1j2.9.0....0...1c.1.34.mobile-heirloom-serp..9.15.932.P3NnWCdF6NU";
-      //var str = "https://www.google.co.jp/search?q=searchwp+reboot&oe=utf-8&rls=org.mozilla%3Aja%3Aofficial&gws_rd=cr&oq=searchwp+reboot&gs_l=mobile-heirloom-serp.3..41.4495.15530.0.16229.19.13.5.0.0.2.524.2509.2j5j5j5-1.13.0....0...1c.1.34.mobile-heirloom-serp..11.8.797.ZsbhrEDVstM"
-      var str = uri;
-      var re0 = new RegExp("^http[s]?://([^.]+\.)?google\.([a-z]+\.?)+/(.*)");
-      debug("=================== start");
-      var match = re0.exec(str);
-      debug("=================== end");
-  }
-
   function _parseUri(uri) {
       debug("uri: " + uri);
       var index = uri.indexOf("://");
@@ -288,7 +278,6 @@ gHighlightWords.Highlighting = new function() {
       //var match = gHighlightWords.SyncRegex.exec(uri);
       if(match) {
           var words = [];
-          //this._test(uri);
           if(match) {
               var matchStr = match[match.length-1];
               matchStr = matchStr.replace("　", "+");
@@ -314,7 +303,6 @@ gHighlightWords.Highlighting = new function() {
   }
 
   this._updateHighlightWords = function(uri) {
-      //this._test();
       var words = _parseUri(uri);
       if(words) {
           getChromeWindow()._extensionHilighterWords = words;
@@ -364,6 +352,7 @@ function dumpDoc(aElement)
 
 function install(aData, aReason) {
     //gHighlightWords.install();
+    getWindow().alert("Restart filrefox");
 }
 
 function uninstall(aData, aReason) {
