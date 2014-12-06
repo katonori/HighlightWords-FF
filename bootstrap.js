@@ -7,7 +7,6 @@ Cu.import('resource://gre/modules/Services.jsm');
 const DEBUG = true; // If false, the debug() function does nothing.
 
 gHighlightWords = {};
-gHighlightWords.Highlighter = {};
 gHighlightWords.Preferences = {};
 gHighlightWords.Preferences.highlighted = false;
 gHighlightWords.Preferences.highlightMatchCase = false;
@@ -176,194 +175,191 @@ gHighlightWords.Highlighting = new function() {
 
     return true;
   }
+
+  this.install = function() {
+      //debug('install()');
+  }
+
+  this.uninstall = function() {
+      //debug('uninstall()');
+  }
+
+  this.init = function() {
+      debug('init()');
+
+      this._branch = null;
+
+      if (!this._branch) {
+          this._branch = Services.prefs.getBranch('extensions.highlightwords.');
+
+          this._branch.addObserver('', this, false);
+      }
+  }
+
+  this.uninit = function() {
+      //debug('uninit()');
+
+      if (this._branch) {
+          this._branch.removeObserver('', this);
+          this._branch = null;
+      }
+  }
+
+  this.load = function(aWindow) {
+      //debug('load(' + aWindow + ')');
+
+      if (!aWindow)
+          return;
+
+      getChromeWindow()._extensionHilighterWords = [];
+
+      let deck = aWindow.BrowserApp.deck;
+      deck.addEventListener("pageshow", this, false);
+      deck.addEventListener("touch", this, false);
+      Services.obs.addObserver(this, "Tab:Selected", false);
+  }
+
+  this.unload = function(aWindow) {
+      //debug('unload(' + aWindow + ')');
+
+      if (!aWindow)
+          return;
+
+      let deck = aWindow.BrowserApp.deck;
+      deck.removeEventListener("pageshow", this, false);
+      deck.removeEventListener("touch", this, false);
+      Services.obs.removeObserver(this, "Tab:Selected", false);
+  }
+
+  this.observe = function(aSubject, aTopic, aData) {
+      debug('observe(' + aSubject + ', ' + aTopic + ', ' + aData + ')');
+
+      switch (aTopic) {
+          case 'Tab:Selected':
+              debug("onloadCb");
+              var uri = getTabUrl(aData);
+              this._updateHighlightWords(uri);
+              break;
+      }
+  }
+
+  function _test(uri) {
+      //var str = "https://www.google.co.jp/search?q=searchwp&rls=org.mozilla%3Aja%3Aofficial&oq=searchwp&gs_l=mobile-heirloom-serp.3..0l5.491163.502108.0.503551.24.10.6.4.7.2.772.2771.2j3j1j5-1j2.9.0....0...1c.1.34.mobile-heirloom-serp..9.15.932.P3NnWCdF6NU";
+      //var str = "https://www.google.co.jp/search?q=searchwp+reboot&oe=utf-8&rls=org.mozilla%3Aja%3Aofficial&gws_rd=cr&oq=searchwp+reboot&gs_l=mobile-heirloom-serp.3..41.4495.15530.0.16229.19.13.5.0.0.2.524.2509.2j5j5j5-1.13.0....0...1c.1.34.mobile-heirloom-serp..11.8.797.ZsbhrEDVstM"
+      var str = uri;
+      var re0 = new RegExp("^http[s]?://([^.]+\.)?google\.([a-z]+\.?)+/(.*)");
+      debug("=================== start");
+      var match = re0.exec(str);
+      debug("=================== end");
+  }
+
+  function _parseUri(uri) {
+      debug("uri: " + uri);
+      var index = uri.indexOf("://");
+      if(index < 0) {
+          return null;
+      }
+      var str = uri.substr(index+3);
+      debug("str: " + str);
+      index = str.indexOf("/");
+      if(index < 0) {
+          return null;
+      }
+      var addr = str.substr(0, index);
+      debug("addr: " + addr);
+      var re0 = new RegExp("^([^.]+\.)?google\.([a-z]+\.?)+");
+      var match = re0.exec(addr);
+      if(!match) {
+          return null;
+      }
+      var path = str.substr(index+1);
+      var re1 = new RegExp("^.*[?&]q=([^&]*)");
+      debug("path: " + path);
+      debug("regexp: done");
+      match = re1.exec(path);
+      //var match = gHighlightWords.SyncRegex.exec(uri);
+      if(match) {
+          var words = [];
+          debug("regexp: done: ");
+          //this._test(uri);
+          if(match) {
+              var matchStr = match[match.length-1];
+              matchStr = matchStr.replace("　", "+");
+              matchStr = matchStr.replace("%81%40", "+");
+              matchStr = matchStr.replace("%E3%80%80", "+");
+              debug("matchStr: " + matchStr);
+              if(matchStr.indexOf("+") >= 0) {
+                  var tmp = matchStr.split("+");
+                  for(var i = 0, len = tmp.length; i < len; ++i) {
+                      if(tmp[i] != "") {
+                          words.push(tmp[i]);
+                      }
+                  }
+              }
+              else {
+                  words = [matchStr];
+              }
+              for(var i = 0, len = words.length; i < len; ++i) {
+                  words[i] = decodeURI(words[i]);
+              }
+          }
+          return words;
+      }
+      return null;
+  }
+
+  this._updateHighlightWords = function(uri) {
+      //this._test();
+      var words = _parseUri(uri);
+      if(words) {
+          getChromeWindow()._extensionHilighterWords = words;
+      }
+  }
+
+  this.handleEvent = function(aEvent) {
+      debug("handleEvent: " + aEvent.type);
+      switch (aEvent.type) {
+          case 'touch':
+          {
+              this._test();
+              break;
+          }
+          case 'pageshow':
+          {
+              if (aEvent.originalTarget.defaultView != getSelectedTab().browser.contentWindow) {
+                  break;
+              }
+              var uri = getCurTabUrl();
+              this._updateHighlightWords(uri);
+              gHighlightWords.Highlighting.highlight();
+              break;
+          }
+      }
+  }
 }
-
-//===========================================
-// WordHighlighter
-//===========================================
-let WordHighlighter = {
-    install: function() {
-        //debug('install()');
-    },
-
-    uninstall: function() {
-        //debug('uninstall()');
-    },
-
-    init: function() {
-        debug('init()');
-
-        this._branch = null;
-
-        if (!this._branch) {
-            this._branch = Services.prefs.getBranch('extensions.highlightwords.');
-
-            this._branch.addObserver('', this, false);
-        }
-    },
-
-    uninit: function() {
-        //debug('uninit()');
-
-        if (this._branch) {
-            this._branch.removeObserver('', this);
-            this._branch = null;
-        }
-    },
-
-    load: function(aWindow) {
-        //debug('load(' + aWindow + ')');
-
-        if (!aWindow)
-            return;
-
-        let deck = aWindow.BrowserApp.deck;
-        deck.addEventListener("pageshow", this, false);
-        deck.addEventListener("touch", this, false);
-        Services.obs.addObserver(this, "Tab:Selected", false);
-    },
-
-    unload: function(aWindow) {
-        //debug('unload(' + aWindow + ')');
-
-        if (!aWindow)
-            return;
-
-        let deck = aWindow.BrowserApp.deck;
-        deck.removeEventListener("pageshow", this, false);
-        deck.removeEventListener("touch", this, false);
-        Services.obs.removeObserver(this, "Tab:Selected", false);
-    },
-
-    observe: function(aSubject, aTopic, aData) {
-        debug('observe(' + aSubject + ', ' + aTopic + ', ' + aData + ')');
-
-        switch (aTopic) {
-            case 'Tab:Selected':
-                debug("onloadCb");
-                var uri = getTabUrl(aData);
-                this._updateHighlightWords(uri);
-                break;
-        }
-    },
-
-    _test: function(uri) {
-        //var str = "https://www.google.co.jp/search?q=searchwp&rls=org.mozilla%3Aja%3Aofficial&oq=searchwp&gs_l=mobile-heirloom-serp.3..0l5.491163.502108.0.503551.24.10.6.4.7.2.772.2771.2j3j1j5-1j2.9.0....0...1c.1.34.mobile-heirloom-serp..9.15.932.P3NnWCdF6NU";
-        //var str = "https://www.google.co.jp/search?q=searchwp+reboot&oe=utf-8&rls=org.mozilla%3Aja%3Aofficial&gws_rd=cr&oq=searchwp+reboot&gs_l=mobile-heirloom-serp.3..41.4495.15530.0.16229.19.13.5.0.0.2.524.2509.2j5j5j5-1.13.0....0...1c.1.34.mobile-heirloom-serp..11.8.797.ZsbhrEDVstM"
-        var str = uri;
-        var re0 = new RegExp("^http[s]?://([^.]+\.)?google\.([a-z]+\.?)+/(.*)");
-        debug("=================== start");
-        var match = re0.exec(str);
-        debug("=================== end");
-    },
-
-    _parseUri: function(uri) {
-        debug("uri: " + uri);
-        var index = uri.indexOf("://");
-        if(index < 0) {
-            return null;
-        }
-        var str = uri.substr(index+3);
-        debug("str: " + str);
-        index = str.indexOf("/");
-        if(index < 0) {
-            return null;
-        }
-        var addr = str.substr(0, index);
-        debug("addr: " + addr);
-        var re0 = new RegExp("^([^.]+\.)?google\.([a-z]+\.?)+");
-        var match = re0.exec(addr);
-        if(!match) {
-            return null;
-        }
-        var path = str.substr(index+1);
-        var re1 = new RegExp("^.*[?&]q=([^&]*)");
-        debug("path: " + path);
-        debug("regexp: done");
-        match = re1.exec(path);
-        //var match = gHighlightWords.SyncRegex.exec(uri);
-        if(match) {
-            var words = [];
-            debug("regexp: done: ");
-            //this._test(uri);
-            if(match) {
-                var matchStr = match[match.length-1];
-                matchStr = matchStr.replace("　", "+");
-                matchStr = matchStr.replace("%81%40", "+");
-                matchStr = matchStr.replace("%E3%80%80", "+");
-                debug("matchStr: " + matchStr);
-                if(matchStr.indexOf("+") >= 0) {
-                    var tmp = matchStr.split("+");
-                    for(var i = 0, len = tmp.length; i < len; ++i) {
-                        if(tmp[i] != "") {
-                            words.push(tmp[i]);
-                        }
-                    }
-                }
-                else {
-                    words = [matchStr];
-                }
-                for(var i = 0, len = words.length; i < len; ++i) {
-                    words[i] = decodeURI(words[i]);
-                }
-            }
-            return words;
-        }
-        return null;
-    },
-
-    _updateHighlightWords: function(uri) {
-        //this._test();
-        var words = this._parseUri(uri);
-        if(words) {
-            getChromeWindow()._extensionHilighterWords = words;
-        }
-    },
-
-    handleEvent: function(aEvent) {
-        debug("handleEvent: " + aEvent.type);
-        switch (aEvent.type) {
-            case 'touch':
-            {
-                this._test();
-                break;
-            }
-            case 'pageshow':
-            {
-                if (aEvent.originalTarget.defaultView != getSelectedTab().browser.contentWindow) {
-                    break;
-                }
-                var uri = getCurTabUrl();
-                this._updateHighlightWords(uri);
-                gHighlightWords.Highlighting.highlight();
-                break;
-            }
-        }
-    },
-};
 
 //===========================================
 // bootstrap.js API
 //===========================================
 function install(aData, aReason) {
-    //WordHighlighter.install();
+    //gHighlightWords.install();
 }
 
 function uninstall(aData, aReason) {
     //if (aReason == ADDON_UNINSTALL)
-        //WordHighlighter.uninstall();
+        //gHighlightWords.uninstall();
 }
 
 function startup(aData, aReason) {
     // General setup
-    WordHighlighter.init();
+    gHighlightWords.Highlighting.init();
 
     // Load into any existing windows
     let windows = Services.wm.getEnumerator('navigator:browser');
     while (windows.hasMoreElements()) {
         let win = windows.getNext().QueryInterface(Ci.nsIDOMWindow);
         if (win)
-            WordHighlighter.load(win);
+            gHighlightWords.Highlighting.load(win);
     }
 
     // Load into any new windows
@@ -384,11 +380,11 @@ function shutdown(aData, aReason) {
     while (windows.hasMoreElements()) {
         let win = windows.getNext().QueryInterface(Ci.nsIDOMWindow);
         if (win)
-            WordHighlighter.unload(win);
+            gHighlightWords.Highlighting.unload(win);
     }
 
     // General teardown
-    WordHighlighter.uninit();
+    gHighlightWords.Highlighting.uninit();
 }
 
 let windowListener = {
@@ -399,7 +395,7 @@ let windowListener = {
 
         win.addEventListener('UIReady', function() {
             win.removeEventListener('UIReady', arguments.callee, false);
-            WordHighlighter.load(win);
+            gHighlightWords.Highlighting.load(win);
         }, false);
     },
 
@@ -416,16 +412,6 @@ function debug(aMsg) {
     if (!DEBUG) return;
     aMsg = 'HighlightWords: ' + aMsg;
     Services.console.logStringMessage(aMsg);
-}
-
-function showToast(aWindow, aMsg) {
-    if (!aMsg) return;
-    aWindow.NativeWindow.toast.show(aMsg, 'short');
-}
-
-function sendMessageToJava(aMessage) {
-    let bridge = Cc['@mozilla.org/android/bridge;1'].getService(Ci.nsIAndroidBridge);
-    return bridge.handleGeckoMessage(JSON.stringify(aMessage));
 }
 
 function getSelectedTab() {
@@ -455,26 +441,5 @@ function getTabUrl(idx) {
 function getWindow()
 {
     return getSelectedTab().window;
-}
-
-function getContentWindow()
-{
-    return this._contentWindow = getSelectedTab().browser.contentWindow;
-}
-
-let gStringBundle = null;
-
-function tr(aName) {
-    // For translation
-    if (!gStringBundle) {
-        let uri = 'chrome://highlightwords/locale/main.properties';
-        gStringBundle = Services.strings.createBundle(uri);
-    }
-
-    try {
-        return gStringBundle.GetStringFromName(aName);
-    } catch (ex) {
-        return aName;
-    }
 }
 
