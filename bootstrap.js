@@ -35,6 +35,7 @@ gHighlightWords.Highlighting = new function() {
 
   var _highlighter = new NodeHighlighter("searchwp-highlighting");
   var _nodeSearcher = new NodeSearcher();
+  var _menuId = null;
 
   /**
    * Refreshes the current highlighting.
@@ -68,20 +69,23 @@ gHighlightWords.Highlighting = new function() {
    */
   //function highlight() {
   this.highlight = function () {
-    var termsArray = getChromeWindow()._extensionHilighterWords;
-    for(var i = 0, len = termsArray.length; i < len; ++i) {
-        debug("Words: " + termsArray[i]);
-    }
-    if ( termsArray ) {
-      var count = 0;
-      var highlighterCount = gHighlightWords.Preferences.highlighterCount;
-      var highlightMatchCase = gHighlightWords.Preferences.highlightMatchCase;
+      var words = getChromeWindow()._extensionHilighterWords;
+      if(words) {
+          var termsArray = words;
+          for(var i = 0, len = termsArray.length; i < len; ++i) {
+              debug("Words: " + termsArray[i]);
+          }
+          if ( termsArray ) {
+              var count = 0;
+              var highlighterCount = gHighlightWords.Preferences.highlighterCount;
+              var highlightMatchCase = gHighlightWords.Preferences.highlightMatchCase;
 
-      for ( var i = 0, len = termsArray.length; i < len; ++i ) {
-        var criteria = "term-" + ( i % highlighterCount + 1 );
-        count += highlightBrowserWindow( termsArray[i], criteria, highlightMatchCase );
+              for ( var i = 0, len = termsArray.length; i < len; ++i ) {
+                  var criteria = "term-" + ( i % highlighterCount + 1 );
+                  count += highlightBrowserWindow( termsArray[i], criteria, highlightMatchCase );
+              }
+          }
       }
-    }
   }
 
   /**
@@ -211,7 +215,9 @@ gHighlightWords.Highlighting = new function() {
       if (!aWindow)
           return;
 
-      getChromeWindow()._extensionHilighterWords = [];
+      if(DEBUG) {
+          this._menuId = aWindow.NativeWindow.menu.add("run test", null, test);
+      }
 
       let deck = aWindow.BrowserApp.deck;
       deck.addEventListener("pageshow", this, false);
@@ -224,6 +230,10 @@ gHighlightWords.Highlighting = new function() {
 
       if (!aWindow)
           return;
+
+      if(DEBUG) {
+          aWindow.NativeWindow.menu.remove(this._menuId);
+      }
 
       let deck = aWindow.BrowserApp.deck;
       deck.removeEventListener("pageshow", this, false);
@@ -332,6 +342,12 @@ gHighlightWords.Highlighting = new function() {
               var uri = getCurTabUrl();
               this._updateHighlightWords(uri);
               gHighlightWords.Highlighting.highlight();
+              if(DEBUG) {
+                  if(getChromeWindow()._extensionHilighterWords) {
+                      debug(getChromeWindow()._extensionHilighterWords);
+                  }
+                  dumpDoc(getWindow().content.document.body);
+              }
               break;
           }
       }
@@ -341,6 +357,25 @@ gHighlightWords.Highlighting = new function() {
 //===========================================
 // bootstrap.js API
 //===========================================
+
+
+function test()
+{
+    getChromeWindow()._extensionHilighterWords = ["ubuntu", "re"];
+    getWindow().open("http://192.168.11.19","_self")
+}
+
+function dumpDoc(aElement)
+{
+    var toString = Object.prototype.toString;
+    var children = aElement.children;
+    debug(toString.call(aElement));
+    debug(aElement.innerHTML);
+    for(var i = 0, len = children.length; i < len; ++i) {
+        dumpDoc(children[i]);
+    }
+}
+
 function install(aData, aReason) {
     //gHighlightWords.install();
 }
