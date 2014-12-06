@@ -5,6 +5,7 @@ Cu.import('resource://gre/modules/Services.jsm');
 
 //const DEBUG = false; // If false, the debug() function does nothing.
 const DEBUG = true; // If false, the debug() function does nothing.
+const TEST = true; // If false, the debug() function does nothing.
 
 gHighlightWords = {};
 gHighlightWords.Preferences = {};
@@ -17,6 +18,10 @@ gHighlightWords.SyncRegex = new RegExp("^http[s]?://([^.]+\.)?google\.([a-z]+\.?
 
 Cu.import('chrome://highlightwords/content/nodeSearcher.js');
 Cu.import('chrome://highlightwords/content/nodeHighlighter.js');
+if(TEST) {
+    Cu.import('chrome://highlightwords/content/testModule.js');
+    var Test = new TestModule();
+}
 
 gHighlightWords.loadStyleSheet = function(aFileURI, aIsAgentSheet) {
   var sss = Components.classes["@mozilla.org/content/style-sheet-service;1"]
@@ -162,7 +167,6 @@ gHighlightWords.Highlighting = new function() {
   }
 
   function getFindSelection( aWindow ) {
-    debug("DDDDDDDDD: getFindSelection()");
     return gHighlightWords.getSelectionOfType( aWindow, 128 );
   }
 
@@ -215,13 +219,12 @@ gHighlightWords.Highlighting = new function() {
       if (!aWindow)
           return;
 
-      if(DEBUG) {
+      if(TEST) {
           this._menuId = aWindow.NativeWindow.menu.add("run test", null, test);
       }
 
       let deck = aWindow.BrowserApp.deck;
       deck.addEventListener("pageshow", this, false);
-      deck.addEventListener("touch", this, false);
       Services.obs.addObserver(this, "Tab:Selected", false);
   }
 
@@ -231,13 +234,12 @@ gHighlightWords.Highlighting = new function() {
       if (!aWindow)
           return;
 
-      if(DEBUG) {
+      if(TEST) {
           aWindow.NativeWindow.menu.remove(this._menuId);
       }
 
       let deck = aWindow.BrowserApp.deck;
       deck.removeEventListener("pageshow", this, false);
-      deck.removeEventListener("touch", this, false);
       Services.obs.removeObserver(this, "Tab:Selected", false);
   }
 
@@ -270,13 +272,11 @@ gHighlightWords.Highlighting = new function() {
           return null;
       }
       var str = uri.substr(index+3);
-      debug("str: " + str);
       index = str.indexOf("/");
       if(index < 0) {
           return null;
       }
       var addr = str.substr(0, index);
-      debug("addr: " + addr);
       var re0 = new RegExp("^([^.]+\.)?google\.([a-z]+\.?)+");
       var match = re0.exec(addr);
       if(!match) {
@@ -284,20 +284,15 @@ gHighlightWords.Highlighting = new function() {
       }
       var path = str.substr(index+1);
       var re1 = new RegExp("^.*[?&]q=([^&]*)");
-      debug("path: " + path);
-      debug("regexp: done");
       match = re1.exec(path);
       //var match = gHighlightWords.SyncRegex.exec(uri);
       if(match) {
           var words = [];
-          debug("regexp: done: ");
           //this._test(uri);
           if(match) {
               var matchStr = match[match.length-1];
               matchStr = matchStr.replace("　", "+");
-              matchStr = matchStr.replace("%81%40", "+");
               matchStr = matchStr.replace("%E3%80%80", "+");
-              debug("matchStr: " + matchStr);
               if(matchStr.indexOf("+") >= 0) {
                   var tmp = matchStr.split("+");
                   for(var i = 0, len = tmp.length; i < len; ++i) {
@@ -329,24 +324,17 @@ gHighlightWords.Highlighting = new function() {
   this.handleEvent = function(aEvent) {
       debug("handleEvent: " + aEvent.type);
       switch (aEvent.type) {
-          case 'touch':
-          {
-              this._test();
-              break;
-          }
           case 'pageshow':
           {
-              if (aEvent.originalTarget.defaultView != getSelectedTab().browser.contentWindow) {
+              let tab = getSelectedTab();
+              if(!tab || aEvent.originalTarget.defaultView != tab.browser.contentWindow) {
                   break;
               }
               var uri = getCurTabUrl();
               this._updateHighlightWords(uri);
               gHighlightWords.Highlighting.highlight();
-              if(DEBUG) {
-                  if(getChromeWindow()._extensionHilighterWords) {
-                      debug(getChromeWindow()._extensionHilighterWords);
-                  }
-                  dumpDoc(getWindow().content.document.body);
+              if(TEST) {
+                  Test.check();
               }
               break;
           }
@@ -361,15 +349,13 @@ gHighlightWords.Highlighting = new function() {
 
 function test()
 {
-    getChromeWindow()._extensionHilighterWords = ["ubuntu", "re"];
-    getWindow().open("http://192.168.11.19","_self")
+    Test.test();
 }
 
 function dumpDoc(aElement)
 {
     var toString = Object.prototype.toString;
     var children = aElement.children;
-    debug(toString.call(aElement));
     debug(aElement.innerHTML);
     for(var i = 0, len = children.length; i < len; ++i) {
         dumpDoc(children[i]);
@@ -443,9 +429,12 @@ let windowListener = {
 //===========================================
 // Utilities
 //===========================================
-function debug(aMsg) {
+function debug(aMsg, aWord) {
+    if(aWord == null) {
+        aWord = "HighlightWords: ";
+    }
     if (!DEBUG) return;
-    aMsg = 'HighlightWords: ' + aMsg;
+    aMsg = aWord + aMsg;
     Services.console.logStringMessage(aMsg);
 }
 
