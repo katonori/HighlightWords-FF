@@ -1,11 +1,20 @@
+/* ***** BEGIN LICENSE BLOCK *****
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this file,
+ * You can obtain one at http://mozilla.org/MPL/2.0/.
+ * Copyright (c) 2014, MPL Contributor1 katonori.d@gmail.com
+ *
+ * ***** END LICENSE BLOCK ***** */
+
 const Cc = Components.classes;
 const Ci = Components.interfaces;
 const Cu = Components.utils;
 Cu.import('resource://gre/modules/Services.jsm');
 
-//const DEBUG = false; // If false, the debug() function does nothing.
-const DEBUG = false; // If false, the debug() function does nothing.
+const DEBUG = true; // If false, the debug() function does nothing.
 const TEST = false; // If false, the debug() function does nothing.
+var Test = null;
 
 gHighlightWords = {};
 gHighlightWords.Preferences = {};
@@ -16,27 +25,14 @@ gHighlightWords.Preferences.overlapsDisplayMode = 1;
 gHighlightWords.Preferences.maxColorizedHighlights  = 1000;
 gHighlightWords.SyncRegex = new RegExp("^http[s]?://([^.]+\.)?google\.([a-z]+\.?)+/.*[?&]q=([^&]*)");
 
-Cu.import('chrome://highlightwords/content/nodeSearcher.js');
-Cu.import('chrome://highlightwords/content/nodeHighlighter.js');
-if(TEST) {
-    Cu.import('chrome://highlightwords/content/testModule.js');
-    var Test = new TestModule();
-}
-
-gHighlightWords.loadStyleSheet = function(aFileURI, aIsAgentSheet) {
-  var sss = Components.classes["@mozilla.org/content/style-sheet-service;1"]
-                      .getService(Components.interfaces.nsIStyleSheetService);
-  var ios = Components.classes["@mozilla.org/network/io-service;1"]
-                      .getService(Components.interfaces.nsIIOService);
-  var uri = ios.newURI(aFileURI, null, null);
-  var sheetType = aIsAgentSheet ? sss.AGENT_SHEET : sss.USER_SHEET;
-  if(!sss.sheetRegistered(uri, sheetType)) {
-    sss.loadAndRegisterSheet(uri, sheetType);
+Highlighting = function() {
+  Cu.import('chrome://highlightwords/content/nodeSearcher.js');
+  Cu.import('chrome://highlightwords/content/nodeHighlighter.js');
+  if(TEST) {
+      Cu.import('chrome://highlightwords/content/testModule.js');
+      Test = new TestModule();
   }
-}
-
-gHighlightWords.Highlighting = new function() {
-  gHighlightWords.loadStyleSheet("chrome://highlightwords/content/highlighting-user.css");
+  loadStyleSheet("chrome://highlightwords/content/highlighting-user.css");
 
   var _highlighter = new NodeHighlighter("searchwp-highlighting");
   var _nodeSearcher = new NodeSearcher();
@@ -157,6 +153,18 @@ gHighlightWords.Highlighting = new function() {
     }
 
     return count;
+  }
+
+  function loadStyleSheet(aFileURI, aIsAgentSheet) {
+      var sss = Components.classes["@mozilla.org/content/style-sheet-service;1"]
+          .getService(Components.interfaces.nsIStyleSheetService);
+      var ios = Components.classes["@mozilla.org/network/io-service;1"]
+          .getService(Components.interfaces.nsIIOService);
+      var uri = ios.newURI(aFileURI, null, null);
+      var sheetType = aIsAgentSheet ? sss.AGENT_SHEET : sss.USER_SHEET;
+      if(!sss.sheetRegistered(uri, sheetType)) {
+          sss.loadAndRegisterSheet(uri, sheetType);
+      }
   }
 
   function createElementProto( aDocument, aCriteria ) {
@@ -333,26 +341,8 @@ gHighlightWords.Highlighting = new function() {
 //===========================================
 // bootstrap.js API
 //===========================================
-
-
-function test()
-{
-    Test.test();
-}
-
-function dumpDoc(aElement)
-{
-    var toString = Object.prototype.toString;
-    var children = aElement.children;
-    debug(aElement.innerHTML);
-    for(var i = 0, len = children.length; i < len; ++i) {
-        dumpDoc(children[i]);
-    }
-}
-
 function install(aData, aReason) {
     //gHighlightWords.install();
-    getWindow().alert("Restart filrefox");
 }
 
 function uninstall(aData, aReason) {
@@ -362,6 +352,7 @@ function uninstall(aData, aReason) {
 
 function startup(aData, aReason) {
     // General setup
+    gHighlightWords.Highlighting = new Highlighting();
     gHighlightWords.Highlighting.init();
 
     // Load into any existing windows
@@ -454,5 +445,20 @@ function getTabUrl(idx) {
 function getWindow()
 {
     return getSelectedTab().window;
+}
+
+function test()
+{
+    Test.test();
+}
+
+function dumpDoc(aElement)
+{
+    var toString = Object.prototype.toString;
+    var children = aElement.children;
+    debug(aElement.innerHTML);
+    for(var i = 0, len = children.length; i < len; ++i) {
+        dumpDoc(children[i]);
+    }
 }
 
