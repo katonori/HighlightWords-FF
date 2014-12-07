@@ -13,32 +13,30 @@ const Cu = Components.utils;
 Cu.import('resource://gre/modules/Services.jsm');
 
 const DEBUG = false; // If false, the debug() function does nothing.
-let gHighlightWords = null;
 
 //===========================================
 // bootstrap.js API
 //===========================================
 function install(aData, aReason) {
-    //gHighlightWords.install();
+    //HighlightWords.install();
 }
 
 function uninstall(aData, aReason) {
     //if (aReason == ADDON_UNINSTALL)
-        //gHighlightWords.uninstall();
+        //HighlightWords.uninstall();
 }
 
 function startup(aData, aReason) {
     // General setup
     Cu.import('chrome://highlightwords/content/highlightWords.js');
-    gHighlightWords = new HighlightWords();
-    gHighlightWords.init();
+    HighlightWords.init();
 
     // Load into any existing windows
     let windows = Services.wm.getEnumerator('navigator:browser');
     while (windows.hasMoreElements()) {
         let win = windows.getNext().QueryInterface(Ci.nsIDOMWindow);
         if (win)
-            gHighlightWords.load(win);
+            HighlightWords.load(win);
     }
 
     // Load into any new windows
@@ -59,11 +57,11 @@ function shutdown(aData, aReason) {
     while (windows.hasMoreElements()) {
         let win = windows.getNext().QueryInterface(Ci.nsIDOMWindow);
         if (win)
-            gHighlightWords.unload(win);
+            HighlightWords.unload(win);
     }
 
     // General teardown
-    gHighlightWords.uninit();
+    HighlightWords.uninit();
 }
 
 let windowListener = {
@@ -74,7 +72,7 @@ let windowListener = {
 
         win.addEventListener('UIReady', function() {
             win.removeEventListener('UIReady', arguments.callee, false);
-            gHighlightWords.load(win);
+            HighlightWords.load(win);
         }, false);
     },
 

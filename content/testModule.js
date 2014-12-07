@@ -34,36 +34,38 @@ TestModule = function() {
         return getSelectedTab().window;
     }
     this.test = function() {
+        Cu.import('chrome://highlightwords/content/highlightWords.js');
+
+        debug("####### start the test #######");
+
         getChromeWindow()._testResult = "";
         getChromeWindow()._extensionHilighterWords = ["ubuntu", "re", "asdf", "enabled"];
         getWindow().open("http://192.168.11.19","_self")
+
+        // url
+        {
+            let uri = "https://www.google.co.jp/search?q=searchwp+install+firefox&oe=utf-8&rls=org.mozilla:ja:official&gws_rd=cr&hl=ja&sa=X&as_q=&nfpr=&spell=1&ei=U5iEVJOMHMOtmAWDuIHYBQ&ved=0CAoQvwU";
+            let ref = ["searchwp", "install", "firefox"];
+            let words = HighlightWords.parseUri(uri);
+            if(ref.toString() != words.toString()) {
+                debug("DIFFER: uri: 0");
+                debug("DIFFER: " + words);
+                debug("DIFFER: " + ref);
+            }
+            else {
+                debug("OK: uri: 0");
+            }
+        }
     }
     this.check = function() {
         this._bodyDump = "";
-        this.dumpDoc(getWindow().content.document.body);
+        let html = getWindow().content.document.body.innerHTML;
         let lines = this._bodyDump.split("\n");
-        for(let i = 0, len = lines.length; i < len; ++i) {
-            debug(lines[i], "DUMP");
-        }
         if(this.compare(getWindow().content.document.body)) {
             debug("DIFFER");
         }
         else {
             debug("OK: compare");
-        }
-    }
-
-    this.dumpDoc = function(aElement)
-    {
-        let children = aElement.children;
-        this._bodyDump += aElement.innerHTML;
-        debug(aElement.toString(), "DBG: ");
-        let lines = aElement.innerHTML.split("\n");
-        for(let i = 0, len = lines.length; i < len; i++) {
-            debug(lines[i]);
-        }
-        for(var i = 0, len = children.length; i < len; ++i) {
-            debug(children[i].innerHTML);
         }
     }
 

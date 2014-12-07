@@ -25,7 +25,7 @@ Preferences.overlapsDisplayMode = 1;
 Preferences.maxColorizedHighlights  = 1000;
 let SyncRegex = new RegExp("^http[s]?://([^.]+\.)?google\.([a-z]+\.?)+/.*[?&]q=([^&]*)");
 
-HighlightWords = function() {
+HighlightWords = new function() {
   Cu.import('chrome://highlightwords/content/nodeSearcher.js');
   Cu.import('chrome://highlightwords/content/nodeHighlighter.js');
   if(TEST) {
@@ -263,7 +263,7 @@ HighlightWords = function() {
       }
   }
 
-  function _parseUri(uri) {
+  this.parseUri = function(uri) {
       debug("uri: " + uri);
       let index = uri.indexOf("://");
       if(index < 0) {
@@ -311,7 +311,7 @@ HighlightWords = function() {
   }
 
   this._updateHighlightWords = function(uri) {
-      let words = _parseUri(uri);
+      let words = this.parseUri(uri);
       if(words) {
           getChromeWindow()._extensionHilighterWords = words;
       }
