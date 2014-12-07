@@ -12,9 +12,9 @@ const Ci = Components.interfaces;
 const Cu = Components.utils;
 Cu.import('resource://gre/modules/Services.jsm');
 
-const DEBUG = true; // If false, the debug() function does nothing.
+const DEBUG = false; // If false, the debug() function does nothing.
 const TEST = false; // If false, the debug() function does nothing.
-var Test = null;
+let Test = null;
 
 gHighlightWords = {};
 gHighlightWords.Preferences = {};
@@ -34,9 +34,9 @@ Highlighting = function() {
   }
   loadStyleSheet("chrome://highlightwords/content/highlighting-user.css");
 
-  var _highlighter = new NodeHighlighter("searchwp-highlighting");
-  var _nodeSearcher = new NodeSearcher();
-  var _menuId = null;
+  let _highlighter = new NodeHighlighter("searchwp-highlighting");
+  let _nodeSearcher = new NodeSearcher();
+  let _menuId = null;
 
   /**
    * Refreshes the current highlighting.
@@ -57,7 +57,7 @@ Highlighting = function() {
    * @param aEvent the event object.
    */
   this.toggleHighlight = function(aEvent) {
-    var matchCase = aEvent.altKey || aEvent.ctrlKey;
+    let matchCase = aEvent.altKey || aEvent.ctrlKey;
 
     gHighlightWords.Preferences.highlightMatchCase = matchCase;
     if (!gHighlightWords.Preferences.highlighted || !matchCase) {
@@ -70,19 +70,19 @@ Highlighting = function() {
    */
   //function highlight() {
   this.highlight = function () {
-      var words = getChromeWindow()._extensionHilighterWords;
+      let words = getChromeWindow()._extensionHilighterWords;
       if(words) {
-          var termsArray = words;
-          for(var i = 0, len = termsArray.length; i < len; ++i) {
+          let termsArray = words;
+          for(let i = 0, len = termsArray.length; i < len; ++i) {
               debug("Words: " + termsArray[i]);
           }
           if ( termsArray ) {
-              var count = 0;
-              var highlighterCount = gHighlightWords.Preferences.highlighterCount;
-              var highlightMatchCase = gHighlightWords.Preferences.highlightMatchCase;
+              let count = 0;
+              let highlighterCount = gHighlightWords.Preferences.highlighterCount;
+              let highlightMatchCase = gHighlightWords.Preferences.highlightMatchCase;
 
-              for ( var i = 0, len = termsArray.length; i < len; ++i ) {
-                  var criteria = "term-" + ( i % highlighterCount + 1 );
+              for ( let i = 0, len = termsArray.length; i < len; ++i ) {
+                  let criteria = "term-" + ( i % highlighterCount + 1 );
                   count += highlightBrowserWindow( termsArray[i], criteria, highlightMatchCase );
               }
           }
@@ -97,24 +97,24 @@ Highlighting = function() {
   }
 
   function highlightBrowserWindow(aWord, aCriteria, aMatchCase, aWindow) {
-    var count = 0;
+    let count = 0;
     let window = getWindow();
 
     if (!aWindow) {
       aWindow = window.content;
     }
 
-    for (var i = 0; aWindow.frames && i < aWindow.frames.length; i++) {
+    for (let i = 0; aWindow.frames && i < aWindow.frames.length; i++) {
       count += highlightBrowserWindow(aWord, aCriteria, aMatchCase, aWindow.frames[i]);
     }
 
-    var doc = aWindow.document;
+    let doc = aWindow.document;
     if ( !doc || !doc.body ) {
       return count;
     }
 
-    var clearing = !aCriteria || !aWord;
-    var overlapsDisplayMode = gHighlightWords.Preferences.overlapsDisplayMode;
+    let clearing = !aCriteria || !aWord;
+    let overlapsDisplayMode = gHighlightWords.Preferences.overlapsDisplayMode;
 
     if ( !clearing && overlapsDisplayMode == 1 ) { // fixed
       doc.body.classList.add("searchwp-overlaps-display-mode-1");
@@ -123,21 +123,21 @@ Highlighting = function() {
 
     if ( clearing ) {
       _highlighter.clear(doc);
-      var findSelection = getFindSelection( aWindow );
+      let findSelection = getFindSelection( aWindow );
       findSelection && findSelection.removeAllRanges();
       return count;
     }
 
-    var criteria = aWord.replace(/\s*/, "");
+    let criteria = aWord.replace(/\s*/, "");
 
-    var searchResults = _nodeSearcher.search( doc.body, criteria, aMatchCase, true );
+    let searchResults = _nodeSearcher.search( doc.body, criteria, aMatchCase, true );
 
     if ( searchResults.length ) {
       if ( searchResults.length > gHighlightWords.Preferences.maxColorizedHighlights ) {
-        var findSelection = getFindSelection( aWindow );
+        let findSelection = getFindSelection( aWindow );
 
         if ( findSelection ) {
-          for ( var i = 0, l = searchResults.length; i < l; ++i ) {
+          for ( let i = 0, l = searchResults.length; i < l; ++i ) {
             findSelection.addRange( searchResults[i].range );
           }
 
@@ -145,7 +145,7 @@ Highlighting = function() {
         }
 
       } else {
-        var elementProto = createElementProto( doc, aCriteria );
+        let elementProto = createElementProto( doc, aCriteria );
         _highlighter.highlight( searchResults, elementProto );
 
         count = searchResults.length;
@@ -156,19 +156,19 @@ Highlighting = function() {
   }
 
   function loadStyleSheet(aFileURI, aIsAgentSheet) {
-      var sss = Components.classes["@mozilla.org/content/style-sheet-service;1"]
+      let sss = Components.classes["@mozilla.org/content/style-sheet-service;1"]
           .getService(Components.interfaces.nsIStyleSheetService);
-      var ios = Components.classes["@mozilla.org/network/io-service;1"]
+      let ios = Components.classes["@mozilla.org/network/io-service;1"]
           .getService(Components.interfaces.nsIIOService);
-      var uri = ios.newURI(aFileURI, null, null);
-      var sheetType = aIsAgentSheet ? sss.AGENT_SHEET : sss.USER_SHEET;
+      let uri = ios.newURI(aFileURI, null, null);
+      let sheetType = aIsAgentSheet ? sss.AGENT_SHEET : sss.USER_SHEET;
       if(!sss.sheetRegistered(uri, sheetType)) {
           sss.loadAndRegisterSheet(uri, sheetType);
       }
   }
 
   function createElementProto( aDocument, aCriteria ) {
-    var element = aDocument.createElement("layer");
+    let element = aDocument.createElement("layer");
     element.className = "searchwp-term";
     element.setAttribute( "highlight", aCriteria );
     return element;
@@ -183,7 +183,7 @@ Highlighting = function() {
       return false;
     }
 
-    for ( var i = 0, len = aArray1.length; i < len; ++i ) {
+    for ( let i = 0, len = aArray1.length; i < len; ++i ) {
       if ( aArray1[i] !== aArray2[i] ) {
         return false;
       }
@@ -257,7 +257,7 @@ Highlighting = function() {
       switch (aTopic) {
           case 'Tab:Selected':
               debug("onloadCb");
-              var uri = getTabUrl(aData);
+              let uri = getTabUrl(aData);
               this._updateHighlightWords(uri);
               break;
       }
@@ -265,34 +265,34 @@ Highlighting = function() {
 
   function _parseUri(uri) {
       debug("uri: " + uri);
-      var index = uri.indexOf("://");
+      let index = uri.indexOf("://");
       if(index < 0) {
           return null;
       }
-      var str = uri.substr(index+3);
+      let str = uri.substr(index+3);
       index = str.indexOf("/");
       if(index < 0) {
           return null;
       }
-      var addr = str.substr(0, index);
-      var re0 = new RegExp("^([^.]+\.)?google\.([a-z]+\.?)+");
-      var match = re0.exec(addr);
+      let addr = str.substr(0, index);
+      let re0 = new RegExp("^([^.]+\.)?google\.([a-z]+\.?)+");
+      let match = re0.exec(addr);
       if(!match) {
           return null;
       }
-      var path = str.substr(index+1);
-      var re1 = new RegExp("^.*[?&]q=([^&]*)");
+      let path = str.substr(index+1);
+      let re1 = new RegExp("^.*[?&]q=([^&]*)");
       match = re1.exec(path);
-      //var match = gHighlightWords.SyncRegex.exec(uri);
+      //let match = gHighlightWords.SyncRegex.exec(uri);
       if(match) {
-          var words = [];
+          let words = [];
           if(match) {
-              var matchStr = match[match.length-1];
+              let matchStr = match[match.length-1];
               matchStr = matchStr.replace("　", "+");
               matchStr = matchStr.replace("%E3%80%80", "+");
               if(matchStr.indexOf("+") >= 0) {
-                  var tmp = matchStr.split("+");
-                  for(var i = 0, len = tmp.length; i < len; ++i) {
+                  let tmp = matchStr.split("+");
+                  for(let i = 0, len = tmp.length; i < len; ++i) {
                       if(tmp[i] != "") {
                           words.push(tmp[i]);
                       }
@@ -301,7 +301,7 @@ Highlighting = function() {
               else {
                   words = [matchStr];
               }
-              for(var i = 0, len = words.length; i < len; ++i) {
+              for(let i = 0, len = words.length; i < len; ++i) {
                   words[i] = decodeURI(words[i]);
               }
           }
@@ -311,7 +311,7 @@ Highlighting = function() {
   }
 
   this._updateHighlightWords = function(uri) {
-      var words = _parseUri(uri);
+      let words = _parseUri(uri);
       if(words) {
           getChromeWindow()._extensionHilighterWords = words;
       }
@@ -326,7 +326,7 @@ Highlighting = function() {
               if(!tab || aEvent.originalTarget.defaultView != tab.browser.contentWindow) {
                   break;
               }
-              var uri = getCurTabUrl();
+              let uri = getCurTabUrl();
               this._updateHighlightWords(uri);
               gHighlightWords.Highlighting.highlight();
               if(TEST) {
@@ -435,7 +435,7 @@ function getCurTabUrl() {
 function getTabUrl(idx) {
     let chromeWindow = getChromeWindow();
     let tabs = chromeWindow.BrowserApp._tabs;
-    var uri = null;
+    let uri = null;
     if(tabs.length > idx) {
         uri = chromeWindow.BrowserApp._tabs[idx].browser.currentURI.spec;
     }
@@ -450,15 +450,5 @@ function getWindow()
 function test()
 {
     Test.test();
-}
-
-function dumpDoc(aElement)
-{
-    var toString = Object.prototype.toString;
-    var children = aElement.children;
-    debug(aElement.innerHTML);
-    for(var i = 0, len = children.length; i < len; ++i) {
-        dumpDoc(children[i]);
-    }
 }
 
