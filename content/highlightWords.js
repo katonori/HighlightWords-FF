@@ -26,6 +26,10 @@ Preferences.maxColorizedHighlights  = 1000;
 let SyncRegex = new RegExp("^http[s]?://([^.]+\.)?google\.([a-z]+\.?)+/.*[?&]q=([^&]*)");
 
 HighlightWords = new function() {
+  var _menuId = null;
+  var _sss = null;
+  var _ssUri = null;
+
   Cu.import('chrome://highlightwords/content/nodeSearcher.js');
   Cu.import('chrome://highlightwords/content/nodeHighlighter.js');
   if(TEST) {
@@ -34,9 +38,8 @@ HighlightWords = new function() {
   }
   loadStyleSheet("chrome://highlightwords/content/highlighting-user.css");
 
-  let _highlighter = new NodeHighlighter("searchwp-highlighting");
-  let _nodeSearcher = new NodeSearcher();
-  let _menuId = null;
+  var _highlighter = new NodeHighlighter("searchwp-highlighting");
+  var _nodeSearcher = new NodeSearcher();
 
   /**
    * Refreshes the current highlighting.
@@ -156,14 +159,14 @@ HighlightWords = new function() {
   }
 
   function loadStyleSheet(aFileURI, aIsAgentSheet) {
-      let sss = Components.classes["@mozilla.org/content/style-sheet-service;1"]
+      _sss = Components.classes["@mozilla.org/content/style-sheet-service;1"]
           .getService(Components.interfaces.nsIStyleSheetService);
       let ios = Components.classes["@mozilla.org/network/io-service;1"]
           .getService(Components.interfaces.nsIIOService);
-      let uri = ios.newURI(aFileURI, null, null);
-      let sheetType = aIsAgentSheet ? sss.AGENT_SHEET : sss.USER_SHEET;
-      if(!sss.sheetRegistered(uri, sheetType)) {
-          sss.loadAndRegisterSheet(uri, sheetType);
+      _ssUri = ios.newURI(aFileURI, null, null);
+      let sheetType = aIsAgentSheet ? _sss.AGENT_SHEET : _sss.USER_SHEET;
+      if(!_sss.sheetRegistered(_ssUri, sheetType)) {
+          _sss.loadAndRegisterSheet(_ssUri, sheetType);
       }
   }
 
@@ -219,6 +222,9 @@ HighlightWords = new function() {
           this._branch.removeObserver('', this);
           this._branch = null;
       }
+      if(_sss.sheetRegistered(_ssUri, _sss.USER_SHEET)) {
+          _sss.unregisterSheet(_ssUri, _sss.USER_SHEET);
+      }
   }
 
   this.load = function(aWindow) {
@@ -228,7 +234,7 @@ HighlightWords = new function() {
           return;
 
       if(TEST) {
-          this._menuId = aWindow.NativeWindow.menu.add("run test", null, test);
+          _menuId = aWindow.NativeWindow.menu.add("run test", null, test);
       }
 
       let deck = aWindow.BrowserApp.deck;
@@ -243,7 +249,7 @@ HighlightWords = new function() {
           return;
 
       if(TEST) {
-          aWindow.NativeWindow.menu.remove(this._menuId);
+          aWindow.NativeWindow.menu.remove(_menuId);
       }
 
       let deck = aWindow.BrowserApp.deck;
