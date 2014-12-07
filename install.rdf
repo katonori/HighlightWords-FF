@@ -6,7 +6,7 @@
     <Description about="urn:mozilla:install-manifest">
         <em:id>highlightwords@katonori.addons.mozilla.org</em:id>
         <em:type>2</em:type>
-        <em:name>highlightwords</em:name>
+        <em:name>HighlightWords</em:name>
         <em:version>1.0.0</em:version>
         <em:bootstrap>true</em:bootstrap>
         <em:description>Highligh google search words</em:description>
