@@ -1,2 +1,4 @@
+* 1.0.1
+    - Fix a bug that the add-on does not work correctly until restart firefox.
 * 1.0.0
     - Initial release.
