@@ -7,7 +7,7 @@
         <em:id>highlightwords@katonori.addons.mozilla.org</em:id>
         <em:type>2</em:type>
         <em:name>HighlightWords</em:name>
-        <em:version>1.0.1</em:version>
+        <em:version>1.0.2</em:version>
         <em:bootstrap>true</em:bootstrap>
         <em:description>Highligh google search words</em:description>
         <em:creator>katonori</em:creator>

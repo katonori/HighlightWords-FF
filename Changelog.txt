@@ -1,3 +1,6 @@
+* 1.0.2
+    - Fix a bug that fails to split a string delimited by multibyte spaces.
+    - Fix a bug that highlights words twice when a page reloaded by the back button.
 * 1.0.1
     - Fix a bug that the add-on does not work correctly until restart firefox.
 * 1.0.0
