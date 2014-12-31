@@ -238,6 +238,7 @@ HighlightWords = new function() {
       }
 
       let deck = aWindow.BrowserApp.deck;
+      deck.addEventListener("DOMContentLoaded", this, false);
       deck.addEventListener("pageshow", this, false);
       Services.obs.addObserver(this, "Tab:Selected", false);
   }
@@ -253,6 +254,7 @@ HighlightWords = new function() {
       }
 
       let deck = aWindow.BrowserApp.deck;
+      deck.removeEventListener("DOMContentLoaded", this, false);
       deck.removeEventListener("pageshow", this, false);
       Services.obs.removeObserver(this, "Tab:Selected", false);
   }
@@ -262,7 +264,6 @@ HighlightWords = new function() {
 
       switch (aTopic) {
           case 'Tab:Selected':
-              debug("onloadCb");
               let uri = getTabUrl(aData);
               this._updateHighlightWords(uri);
               break;
@@ -321,11 +322,15 @@ HighlightWords = new function() {
       }
   }
 
+  this._runHighlight = false, // flag to prevent highlighting twice
   this.handleEvent = function(aEvent) {
       debug("handleEvent: " + aEvent.type);
       switch (aEvent.type) {
+          case 'DOMContentLoaded':
+            this._runHighlight = true;
+            break;
           case 'pageshow':
-          {
+          if(this._runHighlight || TEST) {
               let tab = getSelectedTab();
               if(!tab || aEvent.originalTarget.defaultView != tab.browser.contentWindow) {
                   break;
@@ -336,8 +341,9 @@ HighlightWords = new function() {
               if(TEST) {
                   Test.check();
               }
-              break;
+              this._runHighlight = false;
           }
+          break;
       }
   }
 }
