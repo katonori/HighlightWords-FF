@@ -207,6 +207,7 @@ HighlightWords = new function() {
       debug('init()');
 
       this._branch = null;
+      this._highlightingUrl = ""; // used to prevent highlighting twice
 
       if (!this._branch) {
           this._branch = Services.prefs.getBranch('extensions.highlightwords.');
@@ -322,28 +323,30 @@ HighlightWords = new function() {
       }
   }
 
-  this._runHighlight = false, // flag to prevent highlighting twice
   this.handleEvent = function(aEvent) {
       debug("handleEvent: " + aEvent.type);
       switch (aEvent.type) {
           case 'DOMContentLoaded':
-            this._runHighlight = true;
+            this._highlightingUrl = getCurTabUrl();
             break;
           case 'pageshow':
-          if(this._runHighlight || TEST) {
               let tab = getSelectedTab();
-              if(!tab || aEvent.originalTarget.defaultView != tab.browser.contentWindow) {
+              if(!tab) {
                   break;
               }
               let uri = getCurTabUrl();
-              this._updateHighlightWords(uri);
-              this.highlight();
-              if(TEST) {
-                  Test.check();
+              if(this._highlightingUrl == uri || TEST) {
+                  if(aEvent.originalTarget.defaultView != tab.browser.contentWindow) {
+                      break;
+                  }
+                  this._updateHighlightWords(uri);
+                  this.highlight();
+                  if(TEST) {
+                      Test.check();
+                  }
+                  this._highlightingUrl = "";
               }
-              this._runHighlight = false;
-          }
-          break;
+              break;
       }
   }
 }
