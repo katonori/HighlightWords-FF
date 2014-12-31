@@ -292,24 +292,22 @@ HighlightWords = new function() {
       //let match = SyncRegex.exec(uri);
       if(match) {
           let words = [];
-          if(match) {
-              let matchStr = match[match.length-1];
-              matchStr = matchStr.replace("　", "+");
-              matchStr = matchStr.replace("%E3%80%80", "+");
-              if(matchStr.indexOf("+") >= 0) {
-                  let tmp = matchStr.split("+");
-                  for(let i = 0, len = tmp.length; i < len; ++i) {
-                      if(tmp[i] != "") {
-                          words.push(tmp[i]);
-                      }
+          let matchStr = match[match.length-1];
+          matchStr = matchStr.replace(/　/g, "+");
+          matchStr = matchStr.replace(/%E3%80%80/g, "+");
+          if(matchStr.indexOf("+") >= 0) {
+              let tmp = matchStr.split("+");
+              for(let i = 0, len = tmp.length; i < len; ++i) {
+                  if(tmp[i] != "") {
+                      words.push(tmp[i]);
                   }
               }
-              else {
-                  words = [matchStr];
-              }
-              for(let i = 0, len = words.length; i < len; ++i) {
-                  words[i] = decodeURI(words[i]);
-              }
+          }
+          else {
+              words = [matchStr];
+          }
+          for(let i = 0, len = words.length; i < len; ++i) {
+              words[i] = decodeURI(words[i]);
           }
           return words;
       }

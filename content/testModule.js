@@ -33,6 +33,19 @@ TestModule = function() {
     {
         return getSelectedTab().window;
     }
+
+    function testUrl(uri, ref) {
+        let words = HighlightWords.parseUri(uri);
+        refStr = decodeURIComponent(escape(ref.toString()));
+        if( refStr!= words.toString()) {
+            debug("DIFFER: uri: 0");
+            debug("DIFFER: " + words);
+            debug("DIFFER: " + refStr);
+        }
+        else {
+            debug("OK: uri: 0");
+        }
+    }
     this.test = function() {
         Cu.import('chrome://highlightwords/content/highlightWords.js');
 
@@ -40,22 +53,12 @@ TestModule = function() {
 
         getChromeWindow()._testResult = "";
         getChromeWindow()._extensionHilighterWords = ["ubuntu", "re", "asdf", "enabled"];
-        getWindow().open("http://192.168.11.19","_self")
+        getWindow().open("http://192.168.11.192","_self")
 
         // url
-        {
-            let uri = "https://www.google.co.jp/search?q=searchwp+install+firefox&oe=utf-8&rls=org.mozilla:ja:official&gws_rd=cr&hl=ja&sa=X&as_q=&nfpr=&spell=1&ei=U5iEVJOMHMOtmAWDuIHYBQ&ved=0CAoQvwU";
-            let ref = ["searchwp", "install", "firefox"];
-            let words = HighlightWords.parseUri(uri);
-            if(ref.toString() != words.toString()) {
-                debug("DIFFER: uri: 0");
-                debug("DIFFER: " + words);
-                debug("DIFFER: " + ref);
-            }
-            else {
-                debug("OK: uri: 0");
-            }
-        }
+        debug("# start url test");
+        testUrl("https://www.google.co.jp/search?q=searchwp+install+firefox&oe=utf-8&rls=org.mozilla:ja:official&gws_rd=cr&hl=ja&sa=X&as_q=&nfpr=&spell=1&ei=U5iEVJOMHMOtmAWDuIHYBQ&ved=0CAoQvwU", ["searchwp", "install", "firefox"]);
+        testUrl("https://www.google.co.jp/search?q=%E6%8B%A1%E5%BC%B5%E3%80%80%E3%82%A2%E3%83%89%E3%82%AA%E3%83%B3%E3%80%80firefox&ie=utf-8&oe=utf-8&gws_rd=cr&ei=D62jVKXiHoWG8QW5sYGIBg", ["拡張", "アドオン", "firefox"]);
     }
     this.check = function() {
         this._bodyDump = "";
